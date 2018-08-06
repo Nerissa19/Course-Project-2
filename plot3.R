@@ -1,19 +1,27 @@
 
-nei <- readRDS("data/summarySCC_PM25.rds")
-scc <- readRDS("data/Source_Classification_Code.rds")
+source("downloadArchive.R")
 
-library('data.table')
-library('ggplot2')
+# Load the NEI & SCC data frames.
+NEI <- readRDS("summarySCC_PM25.rds")
+SCC <- readRDS("Source_Classification_Code.rds")
 
-df <- data.table(nei)
+# Subset NEI data by Baltimore's fip.
+baltimoreNEI <- NEI[NEI$fips=="24510",]
 
-baltimore <- subset(df, fips == '24510')
+# Aggregate using sum the Baltimore emissions data by year
+aggTotalsBaltimore <- aggregate(Emissions ~ year, baltimoreNEI,sum)
 
-by_year <- baltimore[, list(emissions=sum(Emissions)), by=c('year', 'type')]
-by_year$year = as.numeric(as.character(by_year$year))
-by_year$emissions = as.numeric(as.character(by_year$emissions))
+png("plot3.png",width=480,height=480,units="px",bg="transparent")
 
-ggplot(data=by_year, aes(x=year, y=emissions, col=type)) + geom_line() + geom_point() + ggtitle("Emissions in Baltimore City")
+library(ggplot2)
 
-dev.copy(png, file="plot3.png", width=480, height=480)
+ggp <- ggplot(baltimoreNEI,aes(factor(year),Emissions,fill=type)) +
+  geom_bar(stat="identity") +
+  theme_bw() + guides(fill=FALSE)+
+  facet_grid(.~type,scales = "free",space="free") + 
+  labs(x="year", y=expression("Total PM"[2.5]*" Emission (Tons)")) + 
+  labs(title=expression("PM"[2.5]*" Emissions, Baltimore City 1999-2008 by Source Type"))
+
+print(ggp)
+
 dev.off()
