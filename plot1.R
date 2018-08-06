@@ -1,15 +1,20 @@
-nei <- readRDS("data/summarySCC_PM25.rds")
-scc <- readRDS("data/Source_Classification_Code.rds")
+source("downloadArchive.R")
 
-library('data.table')
+# Load the NEI & SCC data frames.
+NEI <- readRDS("summarySCC_PM25.rds")
+SCC <- readRDS("Source_Classification_Code.rds")
 
-df <- data.table(nei)
+# Aggregate by sum the total emissions by year
+aggTotals <- aggregate(Emissions ~ year,NEI, sum)
 
-by_year <- df[, list(emissions=sum(Emissions)), by=year]
-by_year$year = as.numeric(as.character(by_year$year))
-by_year$emissions = as.numeric(as.character(by_year$emissions))
+png("plot1.png",width=480,height=480,units="px",bg="transparent")
 
-plot(by_year$year, by_year$emissions, type='l', ylab='Emissions', xlab='Year')
+barplot(
+  (aggTotals$Emissions)/10^6,
+  names.arg=aggTotals$year,
+  xlab="Year",
+  ylab="PM2.5 Emissions (10^6 Tons)",
+  main="Total PM2.5 Emissions From All US Sources"
+)
 
-dev.copy(png, file="plot1.png", width=480, height=480)
 dev.off()
