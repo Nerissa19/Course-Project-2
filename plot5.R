@@ -1,19 +1,28 @@
-nei <- readRDS("data/summarySCC_PM25.rds")
-scc <- readRDS("data/Source_Classification_Code.rds")
 
-library('data.table')
-library('ggplot2')
+source("downloadArchive.R")
 
-df <- data.table(nei)
+# Load the NEI & SCC data frames.
+NEI <- readRDS("summarySCC_PM25.rds")
+SCC <- readRDS("Source_Classification_Code.rds")
 
-# filter dataset to only include Baltimore with type equal to 'ON-ROAD'
-baltimore <- subset(df, fips == '24510' & type == 'ON-ROAD')
+# Gather the subset of the NEI data which corresponds to vehicles
+vehicles <- grepl("vehicle", SCC$SCC.Level.Two, ignore.case=TRUE)
+vehiclesSCC <- SCC[vehicles,]$SCC
+vehiclesNEI <- NEI[NEI$SCC %in% vehiclesSCC,]
 
-by_year <- baltimore[, list(emissions=sum(Emissions)), by=c('year', 'type')]
-by_year$year = as.numeric(as.character(by_year$year))
-by_year$emissions = as.numeric(as.character(by_year$emissions))
+# Subset the vehicles NEI data to Baltimore's fip
+baltimoreVehiclesNEI <- vehiclesNEI[vehiclesNEI$fips=="24510",]
 
-ggplot(data=by_year, aes(x=year, y=emissions)) + geom_line() + geom_point() + ggtitle("Emissions in Baltimore City from Motor Vehicles")
+png("plot5.png",width=480,height=480,units="px",bg="transparent")
 
-dev.copy(png, file="plot5.png", width=480, height=480)
+library(ggplot2)
+
+ggp <- ggplot(baltimoreVehiclesNEI,aes(factor(year),Emissions)) +
+  geom_bar(stat="identity",fill="grey",width=0.75) +
+  theme_bw() +  guides(fill=FALSE) +
+  labs(x="year", y=expression("Total PM"[2.5]*" Emission (10^5 Tons)")) + 
+  labs(title=expression("PM"[2.5]*" Motor Vehicle Source Emissions in Baltimore from 1999-2008"))
+
+print(ggp)
+
 dev.off()
