@@ -1,23 +1,27 @@
 
-nei <- readRDS("data/summarySCC_PM25.rds")
-scc <- readRDS("data/Source_Classification_Code.rds")
+source("downloadArchive.R")
 
-library('data.table')
-library('ggplot2')
+# Load the NEI & SCC data frames.
+NEI <- readRDS("summarySCC_PM25.rds")
+SCC <- readRDS("Source_Classification_Code.rds")
 
-merged <- merge(nei, scc, by="SCC")
+# Subset coal combustion related NEI data
+combustionRelated <- grepl("comb", SCC$SCC.Level.One, ignore.case=TRUE)
+coalRelated <- grepl("coal", SCC$SCC.Level.Four, ignore.case=TRUE) 
+coalCombustion <- (combustionRelated & coalRelated)
+combustionSCC <- SCC[coalCombustion,]$SCC
+combustionNEI <- NEI[NEI$SCC %in% combustionSCC,]
 
-df <- data.table(merged)
+png("plot4.png",width=480,height=480,units="px",bg="transparent")
 
-# Filter records to those which contains the word 'coal' in Short.Name
-coal <- grepl("coal", df$Short.Name, ignore.case=TRUE)
-coal <- data.table(merged[coal, ])
+library(ggplot2)
 
-by_year <- coal[, list(emissions=sum(Emissions)), by=c('year')]
-by_year$year = as.numeric(as.character(by_year$year))
-by_year$emissions = as.numeric(as.character(by_year$emissions))
+ggp <- ggplot(combustionNEI,aes(factor(year),Emissions/10^5)) +
+  geom_bar(stat="identity",fill="grey",width=0.75) +
+  theme_bw() +  guides(fill=FALSE) +
+  labs(x="year", y=expression("Total PM"[2.5]*" Emission (10^5 Tons)")) + 
+  labs(title=expression("PM"[2.5]*" Coal Combustion Source Emissions Across US from 1999-2008"))
 
-ggplot(data=by_year, aes(x=year, y=emissions)) + geom_line() + geom_point() + ggtitle("Emissions from Coal Sources in the US")
+print(ggp)
 
-dev.copy(png, file="plot4.png", width=480, height=480)
 dev.off()
